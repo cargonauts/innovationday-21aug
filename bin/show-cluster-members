@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 1 ] ; then
+	echo "USAGE: $(basename $0) stackname" >&2
+	exit 1
+fi
+
+curl -s $(aws cloudformation describe-stacks --stack-name $1 | \
+	jq -r '.Stacks[0].Parameters[]  | select(.ParameterKey == "DiscoveryURL") | .ParameterValue')  | \
+	jq -r '.node.nodes[].value'  | \
+	sed -e 's/^[^=]*=//' -e 's/^http:\/\///' -e s'/:[0-9]*//'

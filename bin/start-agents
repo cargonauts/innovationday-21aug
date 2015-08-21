@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ $# -ne 1 ] ; then	
+	echo "USAGE: $(basename $0) stack-name" >&2
+	exit 1
+fi
+
+show-cluster-members $1 | while read NODE ; do
+	ssh core@$NODE nohup $HOME/etcd-agent -etcd-path=/usr/bin/etcd2 \> etcd-agent.log 2>\&1 \&
+done

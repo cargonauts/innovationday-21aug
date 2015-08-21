@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -ne 1 ] ; then
+	echo "USAGE: $(basename $0) stackname" >&2
+	exit 1
+fi
+
+curl -s $(aws cloudformation describe-stacks --stack-name $1 | \
+	jq -r '.Stacks[0].Parameters[]  | select(.ParameterKey == "DiscoveryURL") | .ParameterValue')  | \
+	jq -r '"https://discovery.etcd.io/" + .node.nodes[].key'   | \
+	sed -e 's^/_etcd/registry/^^g'

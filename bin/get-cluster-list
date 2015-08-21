@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ $# -ne 2 ] ; then
+	echo "USAGE: stack-name address-postfix" >&2
+	exit 2
+fi
+
+show-cluster-members  $1 | tr '\n' ',' | sed -e "s/,/$2,/g" -e 's/,$//'
