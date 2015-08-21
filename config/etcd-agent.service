@@ -1,0 +1,6 @@
+[Unit]
+Description=etcd test agent
+[Service]
+ExecStart=/bin/sh -c "/root/etcd-agent --etcd-path=/usr/bin/etcd2"
+[Install]
+WantedBy=multi-user.target

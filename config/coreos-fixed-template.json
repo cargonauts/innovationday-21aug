@@ -96,9 +96,14 @@
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "GroupId": {"Ref": "CoreOSSecurityGroup"}, "IpProtocol": "tcp", "FromPort": "2380", "ToPort": "2380", "SourceSecurityGroupId": {
-          "Fn::GetAtt" : [ "CoreOSSecurityGroup", "GroupId" ]
+          "Fn::GetAtt" : [ "CoreOSSecurityGroup", "GroupId" ] }
+	    }
+    },
+    "IngressVpc": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {"Ref": "CoreOSSecurityGroup"}, "IpProtocol": "-1", "FromPort": "0", "ToPort": "65535", "CidrIp": "172.30.0.0/16"
         }
-      }
     },
 
     "CoreosNode1" : {
@@ -133,7 +138,9 @@
 		"    advertise-client-urls: http://$private_ipv4:2379\n",
 		"    initial-advertise-peer-urls: http://$private_ipv4:2380\n",
 		"    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001\n",
-		"    listen-peer-urls: http://172.30.0.10:2380,http://172.30.1.10:2380,http://172.30.2.10:2380\n",
+		"    listen-peer-urls: http://172.30.0.10:2380\n",
+		"    initial-cluster: core-01=http://172.30.0.10:2380,core-02=http://172.30.1.10:2380,core-03=http://172.30.2.10:2380\n",
+		"    initial-cluster-state: new\n",
 		"  units:\n",
 		"    - name: etcd2.service\n",
 		"      command: start\n",
