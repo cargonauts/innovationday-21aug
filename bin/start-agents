@@ -6,5 +6,5 @@ if [ $# -ne 1 ] ; then
 fi
 
 show-cluster-members $1 | while read NODE ; do
-	ssh core@$NODE nohup $HOME/etcd-agent -etcd-path=/usr/bin/etcd2 \> etcd-agent.log 2>\&1 \&
+	ssh core@$NODE 'nohup sudo /home/core/etcd-agent -etcd-path=/usr/bin/etcd2 > etcd-agent.log 2>&1 & sleep 3'  < /dev/null
 done
