@@ -1,0 +1,204 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CoreOS on EC2: http://coreos.com/docs/running-coreos/cloud-providers/ec2/",
+  "Mappings" : {
+      "RegionMap" : {
+
+          "eu-central-1" : {
+              "AMI" : "ami-e06660fd"
+          },
+
+          "ap-northeast-1" : {
+              "AMI" : "ami-0679fe06"
+          },
+
+          "us-gov-west-1" : {
+              "AMI" : "ami-3b92f118"
+          },
+
+          "sa-east-1" : {
+              "AMI" : "ami-b925ada4"
+          },
+
+          "ap-southeast-2" : {
+              "AMI" : "ami-25a9eb1f"
+          },
+
+          "ap-southeast-1" : {
+              "AMI" : "ami-f40b02a6"
+          },
+
+          "us-east-1" : {
+              "AMI" : "ami-1baa1970"
+          },
+
+          "us-west-2" : {
+              "AMI" : "ami-9d4156ad"
+          },
+
+          "us-west-1" : {
+              "AMI" : "ami-cd36cf89"
+          },
+
+          "eu-west-1" : {
+              "AMI" : "ami-aa85dbdd"
+          }
+
+      }
+  },
+  "Parameters": {
+    "InstanceType" : {
+      "Description" : "EC2 HVM instance type (m3.medium, etc).",
+      "Type" : "String",
+      "Default" : "m3.medium",
+      "ConstraintDescription" : "Must be a valid EC2 HVM instance type."
+    },
+    "AllowSSHFrom": {
+      "Description": "The net block (CIDR) that SSH is available to.",
+      "Default": "0.0.0.0/0",
+      "Type": "String"
+    },
+    "KeyPair" : {
+      "Description" : "The name of an EC2 Key Pair to allow SSH access to the instance.",
+      "Type" : "String",
+      "Default": "cargonauts"
+    }
+  },
+  "Resources": {
+    "CoreOSSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+	"VpcId" : "vpc-954096f0",
+        "GroupDescription": "CoreOS SecurityGroup",
+        "SecurityGroupIngress": [
+          {"IpProtocol": "tcp", "FromPort": "22", "ToPort": "22", "CidrIp": {"Ref": "AllowSSHFrom"}}
+        ]
+      }
+    },
+    "Ingress4001": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {"Ref": "CoreOSSecurityGroup"}, 
+	"IpProtocol": "tcp", "FromPort": "4001", "ToPort": "4001", "SourceSecurityGroupId": {
+          "Fn::GetAtt" : [ "CoreOSSecurityGroup", "GroupId" ]
+        }
+      }
+    },
+    "Ingress2379": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {"Ref": "CoreOSSecurityGroup"}, "IpProtocol": "tcp", "FromPort": "2379", "ToPort": "2379", "SourceSecurityGroupId": {
+          "Fn::GetAtt" : [ "CoreOSSecurityGroup", "GroupId" ]
+        }
+      }
+    },
+    "Ingress2380": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {"Ref": "CoreOSSecurityGroup"}, "IpProtocol": "tcp", "FromPort": "2380", "ToPort": "2380", "SourceSecurityGroupId": {
+          "Fn::GetAtt" : [ "CoreOSSecurityGroup", "GroupId" ]
+        }
+      }
+    },
+
+    "CoreosNode1" : {
+	"Type" : "AWS::EC2::Instance",
+	"Properties": {
+	    "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+	    "InstanceType": {"Ref": "InstanceType"},
+	    "KeyName": {"Ref": "KeyPair"},
+	    "SecurityGroupIds": [{"Ref": "CoreOSSecurityGroup"}],
+	    "PrivateIpAddress" :  "172.30.0.10",
+	    "SubnetId" : "subnet-e1f07e84",
+            "BlockDeviceMappings" : [
+               {
+                  "DeviceName" : "/dev/sdm",
+                  "Ebs" : {
+                     "VolumeType" : "io1",
+                     "Iops" : "200",
+                     "DeleteOnTermination" : "false",
+                     "VolumeSize" : "20"
+                  }
+               },
+               {
+                  "DeviceName" : "/dev/sdk",
+                  "NoDevice" : {}
+               }
+            ],
+	    "UserData" : { "Fn::Base64":
+	      { "Fn::Join": [ "", [
+		"#cloud-config\n\n",
+		"coreos:\n",
+		"  etcd2:\n",
+		"    advertise-client-urls: http://$private_ipv4:2379\n",
+		"    initial-advertise-peer-urls: http://$private_ipv4:2380\n",
+		"    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001\n",
+		"    listen-peer-urls: http://172.30.0.10:2380,http://172.30.1.10:2380,http://172.30.2.10:2380\n",
+		"  units:\n",
+		"    - name: etcd2.service\n",
+		"      command: start\n",
+		"    - name: fleet.service\n",
+		"      command: start\n"
+		] ]
+	      }
+	    }
+	}
+   },
+   "CoreosNode2" : {
+	"Type" : "AWS::EC2::Instance",
+	"Properties": {
+	    "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+	    "InstanceType": {"Ref": "InstanceType"},
+	    "KeyName": {"Ref": "KeyPair"},
+	    "SecurityGroupIds": [{"Ref": "CoreOSSecurityGroup"}],
+	   "PrivateIpAddress" :  "172.30.1.10",
+	   "SubnetId" : "subnet-348c3b43",
+	    "UserData" : { "Fn::Base64":
+	      { "Fn::Join": [ "", [
+		"#cloud-config\n\n",
+		"coreos:\n",
+		"  etcd2:\n",
+		"    advertise-client-urls: http://$private_ipv4:2379\n",
+		"    initial-advertise-peer-urls: http://$private_ipv4:2380\n",
+		"    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001\n",
+		"    listen-peer-urls: http://172.30.0.10:2380,http://172.30.1.10:2380,http://172.30.2.10:2380\n",
+		"  units:\n",
+		"    - name: etcd2.service\n",
+		"      command: start\n",
+		"    - name: fleet.service\n",
+		"      command: start\n"
+		] ]
+	      }
+	    }
+	}
+   },
+   "CoreosNode3" : {
+	"Type" : "AWS::EC2::Instance",
+	"Properties": {
+	    "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+	    "InstanceType": {"Ref": "InstanceType"},
+	    "KeyName": {"Ref": "KeyPair"},
+	    "SecurityGroupIds": [{"Ref": "CoreOSSecurityGroup"}],
+	    "PrivateIpAddress" :  "172.30.2.10",
+	    "SubnetId" : "subnet-1024ec49", 
+	    "UserData" : { "Fn::Base64":
+	      { "Fn::Join": [ "", [
+		"#cloud-config\n\n",
+		"coreos:\n",
+		"  etcd2:\n",
+		"    advertise-client-urls: http://$private_ipv4:2379\n",
+		"    initial-advertise-peer-urls: http://$private_ipv4:2380\n",
+		"    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001\n",
+		"    listen-peer-urls: http://172.30.0.10:2380,http://172.30.1.10:2380,http://172.30.2.10:2380\n",
+		"  units:\n",
+		"    - name: etcd2.service\n",
+		"      command: start\n",
+		"    - name: fleet.service\n",
+		"      command: start\n"
+		] ]
+	      }
+	    }
+	}
+   }
+}
+}

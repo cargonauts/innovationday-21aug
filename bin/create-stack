@@ -1,0 +1,12 @@
+#!/bin/bash
+
+aws cloudformation create-stack \
+	--stack-name $1 \
+	--template-body file://$2
+
+STATUS=CREATE_IN_PROGRESS
+while [ "$STATUS" == "CREATE_IN_PROGRESS" ] ; do
+	sleep 1
+	STATUS=$( aws cloudformation describe-stacks --stack-name $1 | jq -r .Stacks[0].StackStatus)
+	echo $STATUS
+done
