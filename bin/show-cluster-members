@@ -5,7 +5,5 @@ if [ $# -ne 1 ] ; then
 	exit 1
 fi
 
-curl -s $(aws cloudformation describe-stacks --stack-name $1 | \
-	jq -r '.Stacks[0].Parameters[]  | select(.ParameterKey == "DiscoveryURL") | .ParameterValue')  | \
-	jq -r '.node.nodes[].value'  | \
-	sed -e 's/^[^=]*=//' -e 's/^http:\/\///' -e s'/:[0-9]*//'
+aws ec2 describe-instances  | \
+	jq -r ".Reservations[].Instances[] | { \"PrivateIpAddress\" : .PrivateIpAddress, \"Tag\" : ( .Tags[] | ( .Key + \"=\" + .Value )) } | select (.Tag == \"aws:cloudformation:stack-name=$1\") | .PrivateIpAddress"
