@@ -1,0 +1,63 @@
+#cloud-config
+
+---
+coreos:
+  update:
+    reboot-strategy: 'off'
+  etcd:
+    addr: $public_ipv4:4001
+    peer-addr: $public_ipv4:7001
+    discovery: https://discovery.etcd.io/0b4c04ac8301ed4cfc3a8f9d355ca0b5
+  etcd2:
+    advertise-client-urls: http://$public_ipv4:2379
+    initial-advertise-peer-urls: http://$private_ipv4:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://$private_ipv4:2380,http://$private_ipv4:7001
+    discovery: https://discovery.etcd.io/0b4c04ac8301ed4cfc3a8f9d355ca0b5
+  fleet:
+    public-ip: $public_ipv4
+  flannel:
+    interface: $public_ipv4
+  units:
+  - name: etcd2.service
+    command: start
+  - name: fleet.service
+    command: start
+  - name: docker-tcp.socket
+    command: start
+    enable: true
+    content: |
+      [Unit]
+      Description=Docker Socket for the API
+
+      [Socket]
+      ListenStream=2375
+      Service=docker.service
+      BindIPv6Only=both
+
+      [Install]
+      WantedBy=sockets.target
+  - name: get-etcd-agent.service
+    command: start
+    content: |
+      [Unit]
+      Description=Get etcd-agent
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c "/usr/bin/wget https://github.com/cargonauts/innovationday-21aug/raw/master/etcd-agent -O /root/etcd-agent && /usr/bin/chmod 755 /root/etcd-*"
+  - name: get-etcd-tester.service
+    command: start
+    content: |
+      [Unit]
+      Description=Get etcd-tester
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c "/usr/bin/wget https://github.com/cargonauts/innovationday-21aug/raw/master/etcd-tester -O /root/etcd-tester && /usr/bin/chmod 755 /root/etcd-*"
+  - name: agent.service
+    command: start
+    content: |
+      [Unit]
+      After=chmod.service
+      Description=Start agent
+      [Service]
+      ExecStart=/bin/sh -c "/root/etcd-agent --etcd-path=/usr/bin/etcd2"
